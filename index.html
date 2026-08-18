@@ -20,6 +20,13 @@
     button { font: inherit; }
     ::-webkit-scrollbar { width: 6px; }
     ::-webkit-scrollbar-thumb { background: #343E46; border-radius: 3px; }
+    .hide-mobile { display: initial; }
+    .tabs-scroll { display: flex; gap: 8px; }
+    @media (max-width: 640px) {
+      .hide-mobile { display: none !important; }
+      .tabs-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; flex-wrap: nowrap; padding-bottom: 4px; }
+      .tabs-scroll::-webkit-scrollbar { display: none; }
+    }
   </style>
 </head>
 <body>
@@ -111,6 +118,19 @@
       padding: '10px 12px', color: C.text, fontFamily: 'Inter', fontSize: 13.5, boxSizing: 'border-box',
     };
 
+    /* ===================== RESPONSIVE HOOK ===================== */
+    function useIsMobile(bp) {
+      const [m, setM] = useState(() => typeof window !== 'undefined' && window.innerWidth <= (bp || 640));
+      useEffect(() => {
+        const q = window.matchMedia(`(max-width: ${bp || 640}px)`);
+        const fn = e => setM(e.matches);
+        q.addEventListener('change', fn);
+        setM(q.matches);
+        return () => q.removeEventListener('change', fn);
+      }, [bp]);
+      return m;
+    }
+
     /* ===================== ICON COMPONENTS ===================== */
     /* Inline SVG icons so we don't depend on lucide-react */
     const I = {
@@ -198,7 +218,7 @@
 
     function TabBar({ tabs, active, onChange }) {
       return (
-        <div style={{ display: 'flex', gap: 8 }}>
+        <div className="tabs-scroll">
           {tabs.map(t => (
             <button key={t.id} onClick={() => onChange(t.id)} type="button" style={{
               display: 'flex', alignItems: 'center', gap: 7, padding: '9px 16px', borderRadius: 9,
@@ -322,23 +342,22 @@
     /* ===================== ADMIN: RESUMEN ===================== */
     function ResumenAdmin({ estacion }) {
       const [precios, setPrecios] = useState(PRODUCTOS.map(p => p.precio));
+      const isMobile = useIsMobile();
       return (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 22 }}>
           <div>
             <div style={{ fontFamily: "'Inter', sans-serif", fontSize: 12, color: C.muted, marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
               Precios vigentes · {estacion}
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 12 }}>
+            </div>              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fill, minmax(220px, 1fr))', gap: 12 }}>
               {PRODUCTOS.map(p => <LedPrice key={p.id} producto={p} />)}
             </div>
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 12 }}>
+          </div>              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(auto-fill, minmax(200px, 1fr))', gap: 12 }}>
             <KpiCard label="Ventas de hoy" value={money(8214.30)} sub="Ambos grifos" color={C.amber} />
             <KpiCard label="Galones + kg despachados" value="1,246" sub="Hoy, todos los productos" />
             <KpiCard label="Facturas emitidas" value="34" sub="Con RUC" color={C.teal} />
             <KpiCard label="Boletas emitidas" value="118" sub="Sin RUC" />
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1.6fr 1fr', gap: 14 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1.6fr 1fr', gap: 14 }}>
             <div style={{ background: C.panel, border: `1px solid ${C.border}`, borderRadius: 12, padding: '18px 20px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
                 <I.BarChart3 size={15} color={C.amber} />
@@ -382,7 +401,7 @@
               <I.Settings size={15} color={C.amber} />
               <span style={{ fontFamily: "'Inter', sans-serif", fontSize: 13, fontWeight: 500, color: C.text }}>Actualizar precios</span>
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 14 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fill, minmax(240px, 1fr))', gap: 14 }}>
               {PRODUCTOS.map((p, i) => {
                 const IconComp = { diesel: I.Fuel, urea: I.Droplet, regular: I.Gauge }[p.id] || I.Fuel;
                 return (
@@ -409,8 +428,9 @@
 
     /* ===================== ADMIN: TRABAJADORES ===================== */
     function HorarioEditor({ horarioData, onChange }) {
+      const isMobile = useIsMobile();
       return (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 6 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(7, 68px)' : 'repeat(7, 1fr)', gap: 6, overflowX: isMobile ? 'auto' : 'visible', paddingBottom: 4 }}>
           {horarioData.map((d, i) => (
             <div key={d.dia} style={{ background: C.bg, border: `1px solid ${C.border}`, borderRadius: 8, padding: 8, display: 'flex', flexDirection: 'column', gap: 6 }}>
               <div style={{ fontFamily: 'Inter', fontSize: 11, color: C.textDim, textAlign: 'center', fontWeight: 600 }}>{d.dia}</div>
@@ -534,6 +554,7 @@
 
     /* ===================== TRABAJADOR: VENTA ===================== */
     function VentaTrabajador({ estacion, ventas, setVentas, fechaOperativa }) {
+      const isMobile = useIsMobile();
       const [productoId, setProductoId] = useState('diesel');
       const [modo, setModo] = useState('galones');
       const [valor, setValor] = useState('');
@@ -568,10 +589,10 @@
       const totalTurno = ventas.reduce((a, v) => a + v.total, 0);
 
       return (
-        <div style={{ display: 'grid', gridTemplateColumns: '1.3fr 1fr', gap: 16 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1.3fr 1fr', gap: 16 }}>
           <div style={{ background: C.panel, border: `1px solid ${C.border}`, borderRadius: 12, padding: 20 }}>
             <div style={{ fontFamily: 'Inter', fontSize: 12, color: C.muted, marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.06em' }}>1. Selecciona el producto</div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)', gap: 10 }}>
               {PRODUCTOS.map(p => {
                 const sel = p.id === productoId;
                 const IconComp = { diesel: I.Fuel, urea: I.Droplet, regular: I.Gauge }[p.id] || I.Fuel;
@@ -608,8 +629,7 @@
               </div>
             )}
 
-            <div style={{ fontFamily: 'Inter', fontSize: 12, color: C.muted, margin: '18px 0 10px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>3. Forma de pago</div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8 }}>
+            <div style={{ fontFamily: 'Inter', fontSize: 12, color: C.muted, margin: '18px 0 10px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>3. Forma de pago</div>              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(4, 1fr)', gap: 8 }}>
               {METODOS.map(m => {
                 const sel = m.id === metodo;
                 const IconComp = { efectivo: I.Banknote, tarjeta: I.CreditCard, yape: I.Smartphone, transferencia: I.ArrowLeftRight }[m.id] || I.Banknote;
@@ -689,6 +709,7 @@
 
     /* ===================== TRABAJADOR: CIERRE DE TURNO ===================== */
     function CierreTurno({ estacion, ventas, usuario, fechaOperativa, historialTurnos, onCerrarTurno }) {
+      const isMobile = useIsMobile();
       const [efectivoContado, setEfectivoContado] = useState('');
       const [cerrado, setCerrado] = useState(false);
 
@@ -717,7 +738,7 @@
       }
 
       return (
-        <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: 16 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1.2fr 1fr', gap: 16 }}>
           <div style={{ background: C.panel, border: `1px solid ${C.border}`, borderRadius: 12, padding: 20 }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -826,6 +847,7 @@
 
     /* ===================== APP ===================== */
     function GrifosKala() {
+      const isMobile = useIsMobile(768);
       const [sesion, setSesion] = useState(null);
       const [estacion, setEstacion] = useState(ESTACIONES[0]);
       const [tabAdmin, setTabAdmin] = useState('resumen');
@@ -862,15 +884,15 @@
           <div style={{ maxWidth: 1180, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 20 }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
               <Logo />
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: C.panel, border: `1px solid ${C.border}`, borderRadius: 10, padding: '8px 12px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                <div className="hide-mobile" style={{ display: 'flex', alignItems: 'center', gap: 8, background: C.panel, border: `1px solid ${C.border}`, borderRadius: 10, padding: '8px 12px' }}>
                   <I.Building2 size={14} color={C.textDim} />
                   <select value={estacion} onChange={e => setEstacion(e.target.value)} style={{ background: 'transparent', border: 'none', color: C.text, fontFamily: 'Inter', fontSize: 13, fontWeight: 500, cursor: 'pointer' }}>
                     {ESTACIONES.map(e => <option key={e} value={e} style={{ background: C.panel }}>{e}</option>)}
                   </select>
                   <I.ChevronDown size={13} color={C.muted} />
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: C.panel, border: `1px solid ${C.border}`, borderRadius: 10, padding: '8px 12px' }}>
+                <div className="hide-mobile" style={{ display: 'flex', alignItems: 'center', gap: 8, background: C.panel, border: `1px solid ${C.border}`, borderRadius: 10, padding: '8px 12px' }}>
                   <I.Clock size={14} color={C.textDim} />
                   <span style={{ fontFamily: 'Inter', fontSize: 12.5, color: C.textDim }}>{formatFechaLarga(fechaOperativa)}</span>
                 </div>
