@@ -1,0 +1,908 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Grifos Kala — Panel de Operaciones</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%23E8A33D'/><text x='16' y='22' font-size='18' text-anchor='middle' fill='%2312161A'>⛽</text></svg>" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;700&family=Inter:wght@400;500;600;700&family=Oswald:wght@500;600;700&display=swap" rel="stylesheet" />
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/recharts@2.12.7/umd/Recharts.js"></script>
+  <script crossorigin src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body, #root { width: 100%; min-height: 100vh; }
+    body { font-family: 'Inter', sans-serif; background: #12161A; }
+    input:focus, select:focus { outline: none; }
+    button { font: inherit; }
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-thumb { background: #343E46; border-radius: 3px; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <!-- Lucide icons as SVG sprite -->
+  <script src="https://unpkg.com/lucide@0.263.1/dist/umd/lucide.min.js"></script>
+
+  <script type="text/babel">
+    const { useState, useMemo, useEffect } = React;
+    const {
+      BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+      PieChart, Pie, Cell,
+    } = Recharts;
+
+    /* ===================== PALETTE ===================== */
+    const C = {
+      bg: '#12161A', panel: '#212930', panelLight: '#2A333B', border: '#343E46',
+      amber: '#E8A33D', amberSoft: '#3A2E1A', teal: '#4FB0A6', tealSoft: '#173330',
+      green: '#8CAE5E', greenSoft: '#26301A', red: '#DD6259', redSoft: '#3A1F1D',
+      text: '#F3EFE6', textDim: '#B7BEC4', muted: '#7C868D',
+    };
+
+    /* ===================== DATA ===================== */
+    const PRODUCTOS = [
+      { id: 'diesel', nombre: 'Diésel B5', precio: 23.10, unidad: 'gal', color: C.amber, soft: C.amberSoft },
+      { id: 'urea', nombre: 'Urea 32', precio: 2.50, unidad: 'kg', color: C.green, soft: C.greenSoft },
+      { id: 'regular', nombre: 'Gasolina Regular', precio: 19.90, unidad: 'gal', color: C.teal, soft: C.tealSoft },
+    ];
+
+    const ESTACIONES = ['Grifo Kala Norte', 'Grifo Kala Sur'];
+    const DIAS = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
+
+    const METODOS = [
+      { id: 'efectivo', label: 'Efectivo' },
+      { id: 'tarjeta', label: 'Tarjeta' },
+      { id: 'yape', label: 'Yape' },
+      { id: 'transferencia', label: 'Transferencia' },
+    ];
+
+    const VENTAS_SEMANA = [
+      { dia: 'Lun', Norte: 4820, Sur: 3910 }, { dia: 'Mar', Norte: 5210, Sur: 4110 },
+      { dia: 'Mié', Norte: 4990, Sur: 3800 }, { dia: 'Jue', Norte: 5430, Sur: 4260 },
+      { dia: 'Vie', Norte: 6120, Sur: 4990 }, { dia: 'Sáb', Norte: 6890, Sur: 5510 },
+      { dia: 'Dom', Norte: 5340, Sur: 4300 },
+    ];
+
+    const PAGO_DIST = [
+      { name: 'Efectivo', value: 38, color: C.amber },
+      { name: 'Tarjeta', value: 27, color: C.teal },
+      { name: 'Yape', value: 24, color: C.green },
+      { name: 'Transferencia', value: 11, color: C.red },
+    ];
+
+    function horario(map) {
+      return DIAS.map(d => ({ dia: d, ...map[d] }));
+    }
+
+    const TRABAJADORES_INIT = [
+      { id: 1, nombre: 'Rosa Huamán', dni: '45871203', usuario: 'rhuaman', estacion: 'Grifo Kala Norte',
+        horario: horario({ Lun: { libre: false, ini: '06:00', fin: '14:00' }, Mar: { libre: false, ini: '06:00', fin: '14:00' }, Mié: { libre: false, ini: '06:00', fin: '14:00' }, Jue: { libre: false, ini: '06:00', fin: '14:00' }, Vie: { libre: false, ini: '06:00', fin: '14:00' }, Sáb: { libre: true }, Dom: { libre: true } }) },
+      { id: 2, nombre: 'Jhon Quispe', dni: '71223456', usuario: 'jquispe', estacion: 'Grifo Kala Norte',
+        horario: horario({ Lun: { libre: false, ini: '14:00', fin: '22:00' }, Mar: { libre: false, ini: '14:00', fin: '22:00' }, Mié: { libre: false, ini: '14:00', fin: '22:00' }, Jue: { libre: true }, Vie: { libre: false, ini: '14:00', fin: '22:00' }, Sáb: { libre: false, ini: '14:00', fin: '22:00' }, Dom: { libre: false, ini: '14:00', fin: '22:00' } }) },
+      { id: 3, nombre: 'Milagros Condori', dni: '48562190', usuario: 'mcondori', estacion: 'Grifo Kala Sur',
+        horario: horario({ Lun: { libre: false, ini: '06:00', fin: '14:00' }, Mar: { libre: false, ini: '06:00', fin: '14:00' }, Mié: { libre: true }, Jue: { libre: false, ini: '06:00', fin: '14:00' }, Vie: { libre: false, ini: '06:00', fin: '14:00' }, Sáb: { libre: false, ini: '06:00', fin: '14:00' }, Dom: { libre: false, ini: '06:00', fin: '14:00' } }) },
+      { id: 4, nombre: 'Edwin Mamani', dni: '76901234', usuario: 'emamani', estacion: 'Grifo Kala Sur',
+        horario: horario({ Lun: { libre: false, ini: '22:00', fin: '06:00' }, Mar: { libre: false, ini: '22:00', fin: '06:00' }, Mié: { libre: false, ini: '22:00', fin: '06:00' }, Jue: { libre: false, ini: '22:00', fin: '06:00' }, Vie: { libre: true }, Sáb: { libre: true }, Dom: { libre: false, ini: '22:00', fin: '06:00' } }) },
+    ];
+
+    /* ===================== HELPERS ===================== */
+    function money(n) {
+      return 'S/ ' + n.toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+    function formatFechaCorta(d) {
+      return d.toLocaleDateString('es-PE', { day: '2-digit', month: '2-digit' });
+    }
+    function formatFechaLarga(d) {
+      const s = d.toLocaleDateString('es-PE', { weekday: 'long', day: '2-digit', month: 'long' });
+      return s.charAt(0).toUpperCase() + s.slice(1);
+    }
+    function addDias(d, n) {
+      const nd = new Date(d);
+      nd.setDate(nd.getDate() + n);
+      return nd;
+    }
+
+    const inputStyle = {
+      width: '100%', background: C.bg, border: `1px solid ${C.border}`, borderRadius: 8,
+      padding: '10px 12px', color: C.text, fontFamily: 'Inter', fontSize: 13.5, boxSizing: 'border-box',
+    };
+
+    /* ===================== ICON COMPONENTS ===================== */
+    /* Inline SVG icons so we don't depend on lucide-react */
+    const I = {
+      Fuel: (p) => <svg xmlns="http://www.w3.org/2000/svg" width={p.size||24} height={p.size||24} viewBox="0 0 24 24" fill="none" stroke={p.color||"currentColor"} strokeWidth={p.strokeWidth||2} strokeLinecap="round" strokeLinejoin="round" className={p.className||""} style={p.style}><path d="M3 22V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v17"/><path d="M15 10h2a2 2 0 0 1 2 2v4a2 2 0 0 0 2 2v0a2 2 0 0 0 2-2V9l-3-3"/><path d="M3 22h12"/><path d="M7 7v5"/></svg>,
+      Droplet: (p) => <svg xmlns="http://www.w3.org/2000/svg" width={p.size||24} height={p.size||24} viewBox="0 0 24 24" fill="none" stroke={p.color||"currentColor"} strokeWidth={p.strokeWidth||2} strokeLinecap="round" strokeLinejoin="round" className={p.className||""} style={p.style}><path d="M12 22a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5s-3.5-4-4-6.5c-.5 2.5-2 4.9-4 6.5C6 11.1 5 13 5 15a7 7 0 0 0 7 7z"/></svg>,
+      Gauge: (p) => <svg xmlns="http://www.w3.org/2000/svg" width={p.size||24} height={p.size||24} viewBox="0 0 24 24" fill="none" stroke={p.color||"currentColor"} strokeWidth={p.strokeWidth||2} strokeLinecap="round" strokeLinejoin="round" className={p.className||""} style={p.style}><path d="m12 14 4-4"/><path d="M3.34 19a10 10 0 1 1 17.32 0"/></svg>,
+      CreditCard: (p) => <svg xmlns="http://www.w3.org/2000/svg" width={p.size||24} height={p.size||24} viewBox="0 0 24 24" fill="none" stroke={p.color||"currentColor"} strokeWidth={p.strokeWidth||2} strokeLinecap="round" strokeLinejoin="round" className={p.className||""} style={p.style}><rect width="20" height="14" x="2" y="5" rx="2"/><line x1="2" x2="22" y1="10" y2="10"/></svg>,
+      Banknote: (p) => <svg xmlns="http://www.w3.org/2000/svg" width={p.size||24} height={p.size||24} viewBox="0 0 24 24" fill="none" stroke={p.color||"currentColor"} strokeWidth={p.strokeWidth||2} strokeLinecap="round" strokeLinejoin="round" className={p.className||""} style={p.style}><rect width="20" height="12" x="2" y="6" rx="2"/><circle cx="12" cy="12" r="2"/><path d="M6 12h.01M18 12h.01"/></svg>,
+      Smartphone: (p) => <svg xmlns="http://www.w3.org/2000/svg" width={p.size||24} height={p.size||24} viewBox="0 0 24 24" fill="none" stroke={p.color||"currentColor"} strokeWidth={p.strokeWidth||2} strokeLinecap="round" strokeLinejoin="round" className={p.className||""} style={p.style}><rect width="14" height="20" x="5" y="2" rx="2" ry="2"/><path d="M12 18h.01"/></svg>,
+      ArrowLeftRight: (p) => <svg xmlns="http://www.w3.org/2000/svg" width={p.size||24} height={p.size||24} viewBox="0 0 24 24" fill="none" stroke={p.color||"currentColor"} strokeWidth={p.strokeWidth||2} strokeLinecap="round" strokeLinejoin="round" className={p.className||""} style={p.style}><path d="M8 3 4 7l4 4"/><path d="M4 7h16"/><path d="m16 21 4-4-4-4"/><path d="M20 17H4"/></svg>,
+      FileText: (p) => <svg xmlns="http://www.w3.org/2000/svg" width={p.size||24} height={p.size||24} viewBox="0 0 24 24" fill="none" stroke={p.color||"currentColor"} strokeWidth={p.strokeWidth||2} strokeLinecap="round" strokeLinejoin="round" className={p.className||""} style={p.style}><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></svg>,
+      Receipt: (p) => <svg xmlns="http://www.w3.org/2000/svg" width={p.size||24} height={p.size||24} viewBox="0 0 24 24" fill="none" stroke={p.color||"currentColor"} strokeWidth={p.strokeWidth||2} strokeLinecap="round" strokeLinejoin="round" className={p.className||""} style={p.style}><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z"/><path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8"/><path d="M12 17.5v-11"/></svg>,
+      TrendingUp: (p) => <svg xmlns="http://www.w3.org/2000/svg" width={p.size||24} height={p.size||24} viewBox="0 0 24 24" fill="none" stroke={p.color||"currentColor"} strokeWidth={p.strokeWidth||2} strokeLinecap="round" strokeLinejoin="round" className={p.className||""} style={p.style}><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>,
+      Users: (p) => <svg xmlns="http://www.w3.org/2000/svg" width={p.size||24} height={p.size||24} viewBox="0 0 24 24" fill="none" stroke={p.color||"currentColor"} strokeWidth={p.strokeWidth||2} strokeLinecap="round" strokeLinejoin="round" className={p.className||""} style={p.style}><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>,
+      Settings: (p) => <svg xmlns="http://www.w3.org/2000/svg" width={p.size||24} height={p.size||24} viewBox="0 0 24 24" fill="none" stroke={p.color||"currentColor"} strokeWidth={p.strokeWidth||2} strokeLinecap="round" strokeLinejoin="round" className={p.className||""} style={p.style}><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>,
+      ChevronDown: (p) => <svg xmlns="http://www.w3.org/2000/svg" width={p.size||24} height={p.size||24} viewBox="0 0 24 24" fill="none" stroke={p.color||"currentColor"} strokeWidth={p.strokeWidth||2} strokeLinecap="round" strokeLinejoin="round" className={p.className||""} style={p.style}><path d="m6 9 6 6 6-6"/></svg>,
+      Check: (p) => <svg xmlns="http://www.w3.org/2000/svg" width={p.size||24} height={p.size||24} viewBox="0 0 24 24" fill="none" stroke={p.color||"currentColor"} strokeWidth={p.strokeWidth||2} strokeLinecap="round" strokeLinejoin="round" className={p.className||""} style={p.style}><path d="M20 6 9 17l-5-5"/></svg>,
+      BarChart3: (p) => <svg xmlns="http://www.w3.org/2000/svg" width={p.size||24} height={p.size||24} viewBox="0 0 24 24" fill="none" stroke={p.color||"currentColor"} strokeWidth={p.strokeWidth||2} strokeLinecap="round" strokeLinejoin="round" className={p.className||""} style={p.style}><path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg>,
+      Building2: (p) => <svg xmlns="http://www.w3.org/2000/svg" width={p.size||24} height={p.size||24} viewBox="0 0 24 24" fill="none" stroke={p.color||"currentColor"} strokeWidth={p.strokeWidth||2} strokeLinecap="round" strokeLinejoin="round" className={p.className||""} style={p.style}><path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/><path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/><path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2"/><path d="M10 6h4"/><path d="M10 10h4"/><path d="M10 14h4"/><path d="M10 18h4"/></svg>,
+      Clock: (p) => <svg xmlns="http://www.w3.org/2000/svg" width={p.size||24} height={p.size||24} viewBox="0 0 24 24" fill="none" stroke={p.color||"currentColor"} strokeWidth={p.strokeWidth||2} strokeLinecap="round" strokeLinejoin="round" className={p.className||""} style={p.style}><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>,
+      ShieldCheck: (p) => <svg xmlns="http://www.w3.org/2000/svg" width={p.size||24} height={p.size||24} viewBox="0 0 24 24" fill="none" stroke={p.color||"currentColor"} strokeWidth={p.strokeWidth||2} strokeLinecap="round" strokeLinejoin="round" className={p.className||""} style={p.style}><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10"/><path d="m9 12 2 2 4-4"/></svg>,
+      LayoutDashboard: (p) => <svg xmlns="http://www.w3.org/2000/svg" width={p.size||24} height={p.size||24} viewBox="0 0 24 24" fill="none" stroke={p.color||"currentColor"} strokeWidth={p.strokeWidth||2} strokeLinecap="round" strokeLinejoin="round" className={p.className||""} style={p.style}><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg>,
+      ListChecks: (p) => <svg xmlns="http://www.w3.org/2000/svg" width={p.size||24} height={p.size||24} viewBox="0 0 24 24" fill="none" stroke={p.color||"currentColor"} strokeWidth={p.strokeWidth||2} strokeLinecap="round" strokeLinejoin="round" className={p.className||""} style={p.style}><path d="m3 17 2 2 4-4"/><path d="m3 7 2 2 4-4"/><path d="M13 6h8"/><path d="M13 12h8"/><path d="M13 18h8"/></svg>,
+      Lock: (p) => <svg xmlns="http://www.w3.org/2000/svg" width={p.size||24} height={p.size||24} viewBox="0 0 24 24" fill="none" stroke={p.color||"currentColor"} strokeWidth={p.strokeWidth||2} strokeLinecap="round" strokeLinejoin="round" className={p.className||""} style={p.style}><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>,
+      Eye: (p) => <svg xmlns="http://www.w3.org/2000/svg" width={p.size||24} height={p.size||24} viewBox="0 0 24 24" fill="none" stroke={p.color||"currentColor"} strokeWidth={p.strokeWidth||2} strokeLinecap="round" strokeLinejoin="round" className={p.className||""} style={p.style}><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>,
+      EyeOff: (p) => <svg xmlns="http://www.w3.org/2000/svg" width={p.size||24} height={p.size||24} viewBox="0 0 24 24" fill="none" stroke={p.color||"currentColor"} strokeWidth={p.strokeWidth||2} strokeLinecap="round" strokeLinejoin="round" className={p.className||""} style={p.style}><path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/><line x1="2" x2="22" y1="2" y2="22"/></svg>,
+      LogOut: (p) => <svg xmlns="http://www.w3.org/2000/svg" width={p.size||24} height={p.size||24} viewBox="0 0 24 24" fill="none" stroke={p.color||"currentColor"} strokeWidth={p.strokeWidth||2} strokeLinecap="round" strokeLinejoin="round" className={p.className||""} style={p.style}><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/></svg>,
+      Plus: (p) => <svg xmlns="http://www.w3.org/2000/svg" width={p.size||24} height={p.size||24} viewBox="0 0 24 24" fill="none" stroke={p.color||"currentColor"} strokeWidth={p.strokeWidth||2} strokeLinecap="round" strokeLinejoin="round" className={p.className||""} style={p.style}><path d="M5 12h14"/><path d="M12 5v14"/></svg>,
+      Trash2: (p) => <svg xmlns="http://www.w3.org/2000/svg" width={p.size||24} height={p.size||24} viewBox="0 0 24 24" fill="none" stroke={p.color||"currentColor"} strokeWidth={p.strokeWidth||2} strokeLinecap="round" strokeLinejoin="round" className={p.className||""} style={p.style}><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>,
+      X: (p) => <svg xmlns="http://www.w3.org/2000/svg" width={p.size||24} height={p.size||24} viewBox="0 0 24 24" fill="none" stroke={p.color||"currentColor"} strokeWidth={p.strokeWidth||2} strokeLinecap="round" strokeLinejoin="round" className={p.className||""} style={p.style}><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>,
+      AlertTriangle: (p) => <svg xmlns="http://www.w3.org/2000/svg" width={p.size||24} height={p.size||24} viewBox="0 0 24 24" fill="none" stroke={p.color||"currentColor"} strokeWidth={p.strokeWidth||2} strokeLinecap="round" strokeLinejoin="round" className={p.className||""} style={p.style}><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" x2="12" y1="9" y2="13"/><line x1="12" x2="12.01" y1="17" y2="17"/></svg>,
+      Wallet: (p) => <svg xmlns="http://www.w3.org/2000/svg" width={p.size||24} height={p.size||24} viewBox="0 0 24 24" fill="none" stroke={p.color||"currentColor"} strokeWidth={p.strokeWidth||2} strokeLinecap="round" strokeLinejoin="round" className={p.className||""} style={p.style}><path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2.276"/><path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4"/></svg>,
+      DollarSign: (p) => <svg xmlns="http://www.w3.org/2000/svg" width={p.size||24} height={p.size||24} viewBox="0 0 24 24" fill="none" stroke={p.color||"currentColor"} strokeWidth={p.strokeWidth||2} strokeLinecap="round" strokeLinejoin="round" className={p.className||""} style={p.style}><line x1="12" x2="12" y1="2" y2="22"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>,
+      ShoppingCart: (p) => <svg xmlns="http://www.w3.org/2000/svg" width={p.size||24} height={p.size||24} viewBox="0 0 24 24" fill="none" stroke={p.color||"currentColor"} strokeWidth={p.strokeWidth||2} strokeLinecap="round" strokeLinejoin="round" className={p.className||""} style={p.style}><circle cx="8" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/></svg>,
+      Activity: (p) => <svg xmlns="http://www.w3.org/2000/svg" width={p.size||24} height={p.size||24} viewBox="0 0 24 24" fill="none" stroke={p.color||"currentColor"} strokeWidth={p.strokeWidth||2} strokeLinecap="round" strokeLinejoin="round" className={p.className||""} style={p.style}><path d="M22 12h-2.48a2 2 0 0 0-1.93 1.46l-2.35 8.36a.25.25 0 0 1-.48 0L9.24 2.18a.25.25 0 0 0-.48 0l-2.35 8.36A2 2 0 0 1 4.49 12H2"/></svg>,
+      Moon: (p) => <svg xmlns="http://www.w3.org/2000/svg" width={p.size||24} height={p.size||24} viewBox="0 0 24 24" fill="none" stroke={p.color||"currentColor"} strokeWidth={p.strokeWidth||2} strokeLinecap="round" strokeLinejoin="round" className={p.className||""} style={p.style}><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>,
+    };
+
+    /* ===================== SHARED COMPONENTS ===================== */
+    function Logo() {
+      return (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{ width: 36, height: 36, borderRadius: 10, background: C.amber, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <I.Fuel size={22} color={C.bg} strokeWidth={2.4} />
+          </div>
+          <div style={{ lineHeight: 1.05 }}>
+            <div style={{ fontFamily: "'Oswald', sans-serif", fontWeight: 600, fontSize: 19, letterSpacing: '0.03em', color: C.text, textTransform: 'uppercase' }}>Grifos Kala</div>
+            <div style={{ fontFamily: "'Inter', sans-serif", fontSize: 11, color: C.muted, letterSpacing: '0.04em' }}>Panel de operaciones</div>
+          </div>
+        </div>
+      );
+    }
+
+    function Field({ label, children }) {
+      return (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <label style={{ fontFamily: 'Inter', fontSize: 12, color: C.textDim }}>{label}</label>
+          {children}
+        </div>
+      );
+    }
+
+    function Pill({ active, onClick, children, Icon }) {
+      return (
+        <button onClick={onClick} type="button" style={{
+          display: 'flex', alignItems: 'center', gap: 6, padding: '8px 14px', borderRadius: 999,
+          border: `1px solid ${active ? C.amber : C.border}`, background: active ? C.amberSoft : 'transparent',
+          color: active ? C.amber : C.textDim, fontFamily: "'Inter', sans-serif", fontSize: 13, fontWeight: 500, cursor: 'pointer',
+        }}>
+          {Icon && <Icon size={14} />}
+          {children}
+        </button>
+      );
+    }
+
+    function KpiCard({ label, value, sub, color }) {
+      return (
+        <div style={{ background: C.panel, border: `1px solid ${C.border}`, borderRadius: 12, padding: '16px 18px' }}>
+          <div style={{ fontFamily: "'Inter', sans-serif", fontSize: 12, color: C.muted, marginBottom: 8 }}>{label}</div>
+          <div style={{ fontFamily: "'Oswald', sans-serif", fontSize: 25, fontWeight: 600, color: color || C.text }}>{value}</div>
+          {sub && <div style={{ fontFamily: "'Inter', sans-serif", fontSize: 11.5, color: C.muted, marginTop: 4 }}>{sub}</div>}
+        </div>
+      );
+    }
+
+    function TabBar({ tabs, active, onChange }) {
+      return (
+        <div style={{ display: 'flex', gap: 8 }}>
+          {tabs.map(t => (
+            <button key={t.id} onClick={() => onChange(t.id)} type="button" style={{
+              display: 'flex', alignItems: 'center', gap: 7, padding: '9px 16px', borderRadius: 9,
+              border: `1px solid ${active === t.id ? C.amber : C.border}`,
+              background: active === t.id ? C.amberSoft : C.panel,
+              color: active === t.id ? C.amber : C.textDim, fontFamily: 'Inter', fontSize: 13, fontWeight: 600, cursor: 'pointer',
+            }}>
+              <t.Icon size={14} /> {t.label}
+            </button>
+          ))}
+        </div>
+      );
+    }
+
+    function LedPrice({ producto }) {
+      const { nombre, precio, unidad, color, soft, id } = producto;
+      const IconComp = { diesel: I.Fuel, urea: I.Droplet, regular: I.Gauge }[id] || I.Fuel;
+      return (
+        <div style={{ background: C.panel, border: `1px solid ${C.border}`, borderRadius: 12, padding: '16px 18px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: C.textDim }}>
+            <div style={{ width: 28, height: 28, borderRadius: 8, background: soft, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <IconComp size={15} color={color} />
+            </div>
+            <span style={{ fontFamily: "'Inter', sans-serif", fontSize: 12.5, fontWeight: 500 }}>{nombre}</span>
+          </div>
+          <div style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 700, fontSize: 27, color, letterSpacing: '0.02em', textShadow: `0 0 14px ${color}55` }}>
+            S/ {precio.toFixed(2)}
+            <span style={{ fontFamily: "'Inter', sans-serif", fontWeight: 500, fontSize: 12, color: C.muted, marginLeft: 6 }}>/ {unidad}</span>
+          </div>
+        </div>
+      );
+    }
+
+    /* ===================== LOGIN ===================== */
+    function LoginScreen({ onLogin }) {
+      const [rol, setRol] = useState('trabajador');
+      const [usuario, setUsuario] = useState('');
+      const [clave, setClave] = useState('');
+      const [verClave, setVerClave] = useState(false);
+      const [error, setError] = useState('');
+
+      function submit() {
+        if (!usuario.trim() || !clave.trim()) {
+          setError('Ingresa tu usuario y contraseña.');
+          return;
+        }
+        setError('');
+        onLogin(rol, usuario.trim());
+      }
+
+      function onKeyDownField(e) {
+        if (e.key === 'Enter') submit();
+      }
+
+      return (
+        <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: C.bg, padding: 20 }}>
+          <div style={{ width: '100%', maxWidth: 380 }}>
+            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 26 }}>
+              <Logo />
+            </div>
+            <div style={{ background: C.panel, border: `1px solid ${C.border}`, borderRadius: 14, padding: 24 }}>
+              <div style={{ display: 'flex', background: C.bg, border: `1px solid ${C.border}`, borderRadius: 10, padding: 3, marginBottom: 20 }}>
+                {['trabajador', 'admin'].map(r => (
+                  <button key={r} type="button" onClick={() => setRol(r)} style={{
+                    flex: 1, padding: '9px 0', borderRadius: 8, border: 'none',
+                    background: rol === r ? C.amber : 'transparent', color: rol === r ? C.bg : C.textDim,
+                    fontFamily: 'Inter', fontWeight: 600, fontSize: 13, cursor: 'pointer',
+                  }}>
+                    {r === 'trabajador' ? 'Trabajador' : 'Administrador'}
+                  </button>
+                ))}
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                <Field label="Usuario">
+                  <input style={inputStyle} placeholder="ej. rhuaman" value={usuario} onChange={e => setUsuario(e.target.value)} onKeyDown={onKeyDownField} />
+                </Field>
+                <Field label="Contraseña">
+                  <div style={{ position: 'relative' }}>
+                    <input
+                      style={{ ...inputStyle, paddingRight: 38 }} type={verClave ? 'text' : 'password'}
+                      placeholder="••••••••" value={clave} onChange={e => setClave(e.target.value)} onKeyDown={onKeyDownField}
+                    />
+                    <button type="button" onClick={() => setVerClave(v => !v)} style={{
+                      position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)',
+                      background: 'none', border: 'none', cursor: 'pointer', color: C.muted, padding: 4,
+                    }}>
+                      {verClave ? <I.EyeOff size={16} /> : <I.Eye size={16} />}
+                    </button>
+                  </div>
+                </Field>
+                {error && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: C.red, fontFamily: 'Inter', fontSize: 12.5 }}>
+                    <I.AlertTriangle size={14} /> {error}
+                  </div>
+                )}
+                <button type="button" onClick={submit} style={{
+                  marginTop: 4, background: C.amber, color: C.bg, border: 'none', borderRadius: 9,
+                  padding: '11px 0', fontFamily: 'Inter', fontWeight: 700, fontSize: 14, cursor: 'pointer',
+                }}>
+                  Ingresar
+                </button>
+                <div style={{ textAlign: 'center', fontFamily: 'Inter', fontSize: 12, color: C.muted, cursor: 'pointer' }}>
+                  ¿Olvidaste tu contraseña? Pide un reinicio al administrador.
+                </div>
+              </div>
+            </div>
+            <div style={{
+              display: 'flex', alignItems: 'flex-start', gap: 8, marginTop: 16, padding: '10px 12px',
+              background: C.tealSoft, border: `1px solid ${C.border}`, borderRadius: 10,
+            }}>
+              <I.Lock size={14} color={C.teal} style={{ marginTop: 2, flexShrink: 0 }} />
+              <span style={{ fontFamily: 'Inter', fontSize: 11.5, color: C.textDim, lineHeight: 1.5 }}>
+                Conexión cifrada (HTTPS/TLS). Las contraseñas nunca se guardan como texto plano: se almacenan con hash bcrypt/Argon2 + sal única por usuario, así que ni el equipo técnico puede leerlas.
+              </span>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    /* ===================== ADMIN: RESUMEN ===================== */
+    function ResumenAdmin({ estacion }) {
+      const [precios, setPrecios] = useState(PRODUCTOS.map(p => p.precio));
+      return (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 22 }}>
+          <div>
+            <div style={{ fontFamily: "'Inter', sans-serif", fontSize: 12, color: C.muted, marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+              Precios vigentes · {estacion}
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 12 }}>
+              {PRODUCTOS.map(p => <LedPrice key={p.id} producto={p} />)}
+            </div>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 12 }}>
+            <KpiCard label="Ventas de hoy" value={money(8214.30)} sub="Ambos grifos" color={C.amber} />
+            <KpiCard label="Galones + kg despachados" value="1,246" sub="Hoy, todos los productos" />
+            <KpiCard label="Facturas emitidas" value="34" sub="Con RUC" color={C.teal} />
+            <KpiCard label="Boletas emitidas" value="118" sub="Sin RUC" />
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1.6fr 1fr', gap: 14 }}>
+            <div style={{ background: C.panel, border: `1px solid ${C.border}`, borderRadius: 12, padding: '18px 20px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
+                <I.BarChart3 size={15} color={C.amber} />
+                <span style={{ fontFamily: "'Inter', sans-serif", fontSize: 13, fontWeight: 500, color: C.text }}>Ventas por grifo · últimos 7 días (S/)</span>
+              </div>
+              <ResponsiveContainer width="100%" height={220}>
+                <BarChart data={VENTAS_SEMANA} barGap={4}>
+                  <CartesianGrid stroke={C.border} strokeDasharray="3 3" vertical={false} />
+                  <XAxis dataKey="dia" tick={{ fill: C.muted, fontSize: 12, fontFamily: 'Inter' }} axisLine={{ stroke: C.border }} tickLine={false} />
+                  <YAxis tick={{ fill: C.muted, fontSize: 11, fontFamily: 'Inter' }} axisLine={false} tickLine={false} />
+                  <Tooltip contentStyle={{ background: C.panelLight, border: `1px solid ${C.border}`, borderRadius: 8, fontFamily: 'Inter', fontSize: 12 }} labelStyle={{ color: C.text }} />
+                  <Bar dataKey="Norte" fill={C.amber} radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="Sur" fill={C.teal} radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+            <div style={{ background: C.panel, border: `1px solid ${C.border}`, borderRadius: 12, padding: '18px 20px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
+                <I.CreditCard size={15} color={C.teal} />
+                <span style={{ fontFamily: "'Inter', sans-serif", fontSize: 13, fontWeight: 500, color: C.text }}>Formas de pago hoy</span>
+              </div>
+              <ResponsiveContainer width="100%" height={160}>
+                <PieChart>
+                  <Pie data={PAGO_DIST} dataKey="value" nameKey="name" innerRadius={38} outerRadius={62} paddingAngle={3}>
+                    {PAGO_DIST.map((e, i) => <Cell key={i} fill={e.color} stroke="none" />)}
+                  </Pie>
+                  <Tooltip contentStyle={{ background: C.panelLight, border: `1px solid ${C.border}`, borderRadius: 8, fontFamily: 'Inter', fontSize: 12 }} />
+                </PieChart>
+              </ResponsiveContainer>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px 12px', marginTop: 6 }}>
+                {PAGO_DIST.map(e => (
+                  <div key={e.name} style={{ display: 'flex', alignItems: 'center', gap: 6, fontFamily: 'Inter', fontSize: 11.5, color: C.textDim }}>
+                    <span style={{ width: 8, height: 8, borderRadius: 2, background: e.color }} /> {e.name} {e.value}%
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+          <div style={{ background: C.panel, border: `1px solid ${C.border}`, borderRadius: 12, padding: '18px 20px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
+              <I.Settings size={15} color={C.amber} />
+              <span style={{ fontFamily: "'Inter', sans-serif", fontSize: 13, fontWeight: 500, color: C.text }}>Actualizar precios</span>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 14 }}>
+              {PRODUCTOS.map((p, i) => {
+                const IconComp = { diesel: I.Fuel, urea: I.Droplet, regular: I.Gauge }[p.id] || I.Fuel;
+                return (
+                  <div key={p.id} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <IconComp size={15} color={p.color} style={{ flexShrink: 0 }} />
+                    <span style={{ fontFamily: 'Inter', fontSize: 13, color: C.textDim, flex: 1 }}>{p.nombre}</span>
+                    <span style={{ fontFamily: 'Inter', fontSize: 12, color: C.muted }}>S/</span>
+                    <input
+                      type="number" step="0.01" value={precios[i]}
+                      onChange={e => setPrecios(prev => prev.map((v, j) => j === i ? Number(e.target.value) : v))}
+                      style={{ width: 78, background: C.bg, border: `1px solid ${C.border}`, borderRadius: 8, padding: '6px 8px', color: C.text, fontFamily: 'JetBrains Mono', fontSize: 13 }}
+                    />
+                  </div>
+                );
+              })}
+            </div>
+            <button style={{ marginTop: 14, background: C.amber, color: C.bg, border: 'none', borderRadius: 8, padding: '9px 18px', fontFamily: 'Inter', fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>
+              Guardar nuevos precios
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    /* ===================== ADMIN: TRABAJADORES ===================== */
+    function HorarioEditor({ horarioData, onChange }) {
+      return (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 6 }}>
+          {horarioData.map((d, i) => (
+            <div key={d.dia} style={{ background: C.bg, border: `1px solid ${C.border}`, borderRadius: 8, padding: 8, display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <div style={{ fontFamily: 'Inter', fontSize: 11, color: C.textDim, textAlign: 'center', fontWeight: 600 }}>{d.dia}</div>
+              <button type="button" onClick={() => onChange(i, { ...d, libre: !d.libre })} style={{
+                fontSize: 10, fontFamily: 'Inter', border: 'none', borderRadius: 6, padding: '4px 0', cursor: 'pointer',
+                background: d.libre ? C.redSoft : C.greenSoft, color: d.libre ? C.red : C.green, fontWeight: 600,
+              }}>
+                {d.libre ? 'Libre' : 'Trabaja'}
+              </button>
+              {!d.libre && (
+                <>
+                  <input type="time" value={d.ini || ''} onChange={e => onChange(i, { ...d, ini: e.target.value })}
+                    style={{ background: C.panel, border: `1px solid ${C.border}`, borderRadius: 5, color: C.text, fontFamily: 'JetBrains Mono', fontSize: 10, padding: '3px 2px', width: '100%' }} />
+                  <input type="time" value={d.fin || ''} onChange={e => onChange(i, { ...d, fin: e.target.value })}
+                    style={{ background: C.panel, border: `1px solid ${C.border}`, borderRadius: 5, color: C.text, fontFamily: 'JetBrains Mono', fontSize: 10, padding: '3px 2px', width: '100%' }} />
+                </>
+              )}
+            </div>
+          ))}
+        </div>
+      );
+    }
+
+    function resumenHorario(h) {
+      const activos = h.filter(d => !d.libre);
+      if (activos.length === 0) return 'Sin turnos asignados';
+      if (activos.length === 7 && new Set(activos.map(d => (d.ini || '') + (d.fin || ''))).size === 1) {
+        return `Lun a Dom · ${activos[0].ini} – ${activos[0].fin}`;
+      }
+      return activos.map(d => `${d.dia} ${d.ini}-${d.fin}`).join(' · ');
+    }
+
+    function TrabajadoresAdmin() {
+      const [trabajadores, setTrabajadores] = useState(TRABAJADORES_INIT);
+      const [mostrarForm, setMostrarForm] = useState(false);
+      const [nuevo, setNuevo] = useState({
+        nombre: '', dni: '', usuario: '', clave: '', estacion: ESTACIONES[0],
+        horario: horario(Object.fromEntries(DIAS.map(d => [d, { libre: true, ini: '', fin: '' }]))),
+      });
+
+      function actualizarDiaNuevo(i, valor) {
+        setNuevo(prev => ({ ...prev, horario: prev.horario.map((d, j) => j === i ? valor : d) }));
+      }
+
+      function agregar() {
+        if (!nuevo.nombre.trim() || !nuevo.dni.trim() || !nuevo.usuario.trim() || !nuevo.clave.trim()) return;
+        setTrabajadores(prev => [...prev, { id: Date.now(), ...nuevo }]);
+        setNuevo({ nombre: '', dni: '', usuario: '', clave: '', estacion: ESTACIONES[0], horario: horario(Object.fromEntries(DIAS.map(d => [d, { libre: true, ini: '', fin: '' }]))) });
+        setMostrarForm(false);
+      }
+
+      function eliminar(id) {
+        setTrabajadores(prev => prev.filter(t => t.id !== id));
+      }
+
+      return (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <span style={{ fontFamily: 'Inter', fontSize: 13, color: C.textDim }}>{trabajadores.length} trabajadores registrados</span>
+            <button onClick={() => setMostrarForm(v => !v)} type="button" style={{
+              display: 'flex', alignItems: 'center', gap: 6, background: C.amber, color: C.bg, border: 'none',
+              borderRadius: 8, padding: '9px 16px', fontFamily: 'Inter', fontWeight: 600, fontSize: 13, cursor: 'pointer',
+            }}>
+              {mostrarForm ? <I.X size={14} /> : <I.Plus size={14} />} {mostrarForm ? 'Cancelar' : 'Añadir trabajador'}
+            </button>
+          </div>
+
+          {mostrarForm && (
+            <div style={{ background: C.panel, border: `1px solid ${C.border}`, borderRadius: 12, padding: 18, display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 12 }}>
+                <Field label="Nombre completo">
+                  <input style={inputStyle} value={nuevo.nombre} onChange={e => setNuevo(p => ({ ...p, nombre: e.target.value }))} placeholder="Nombre y apellido" />
+                </Field>
+                <Field label="DNI">
+                  <input style={inputStyle} value={nuevo.dni} onChange={e => setNuevo(p => ({ ...p, dni: e.target.value }))} placeholder="12345678" />
+                </Field>
+                <Field label="Usuario de acceso">
+                  <input style={inputStyle} value={nuevo.usuario} onChange={e => setNuevo(p => ({ ...p, usuario: e.target.value }))} placeholder="jperez" />
+                </Field>
+                <Field label="Contraseña temporal">
+                  <input style={inputStyle} type="text" value={nuevo.clave} onChange={e => setNuevo(p => ({ ...p, clave: e.target.value }))} placeholder="Se pedirá cambiarla" />
+                </Field>
+              </div>
+              <Field label="Grifo asignado">
+                <select style={{ ...inputStyle, cursor: 'pointer' }} value={nuevo.estacion} onChange={e => setNuevo(p => ({ ...p, estacion: e.target.value }))}>
+                  {ESTACIONES.map(e => <option key={e} value={e} style={{ background: C.bg }}>{e}</option>)}
+                </select>
+              </Field>
+              <Field label="Horario semanal">
+                <HorarioEditor horarioData={nuevo.horario} onChange={actualizarDiaNuevo} />
+              </Field>
+              <button onClick={agregar} type="button" style={{
+                alignSelf: 'flex-start', background: C.amber, color: C.bg, border: 'none', borderRadius: 8,
+                padding: '10px 20px', fontFamily: 'Inter', fontWeight: 700, fontSize: 13, cursor: 'pointer',
+              }}>
+                Guardar trabajador
+              </button>
+            </div>
+          )}
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {trabajadores.map(t => (
+              <div key={t.id} style={{ background: C.panel, border: `1px solid ${C.border}`, borderRadius: 12, padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 14 }}>
+                <div style={{ width: 38, height: 38, borderRadius: '50%', background: C.panelLight, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'Inter', fontWeight: 600, fontSize: 13, color: C.textDim, flexShrink: 0 }}>
+                  {t.nombre.split(' ').map(n => n[0]).slice(0, 2).join('')}
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontFamily: 'Inter', fontSize: 13.5, color: C.text, fontWeight: 500 }}>{t.nombre} <span style={{ color: C.muted, fontWeight: 400 }}>· DNI {t.dni}</span></div>
+                  <div style={{ fontFamily: 'Inter', fontSize: 11.5, color: C.muted, marginTop: 2 }}>{t.estacion} · usuario "{t.usuario}"</div>
+                  <div style={{ fontFamily: 'Inter', fontSize: 11.5, color: C.teal, marginTop: 2 }}>{resumenHorario(t.horario)}</div>
+                </div>
+                <button onClick={() => eliminar(t.id)} type="button" style={{ background: 'none', border: 'none', color: C.muted, cursor: 'pointer', padding: 6 }}>
+                  <I.Trash2 size={16} />
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    /* ===================== TRABAJADOR: VENTA ===================== */
+    function VentaTrabajador({ estacion, ventas, setVentas, fechaOperativa }) {
+      const [productoId, setProductoId] = useState('diesel');
+      const [modo, setModo] = useState('galones');
+      const [valor, setValor] = useState('');
+      const [metodo, setMetodo] = useState('efectivo');
+      const [comprobante, setComprobante] = useState('boleta');
+      const [ruc, setRuc] = useState('');
+      const [razonSocial, setRazonSocial] = useState('');
+
+      const producto = PRODUCTOS.find(p => p.id === productoId);
+      const num = parseFloat(valor) || 0;
+      const galones = modo === 'galones' ? num : num / producto.precio;
+      const soles = modo === 'soles' ? num : num * producto.precio;
+      const puedeRegistrar = num > 0 && (comprobante === 'boleta' || (ruc.trim().length > 0 && razonSocial.trim().length > 0));
+
+      function registrar() {
+        if (!puedeRegistrar) return;
+        const now = new Date();
+        setVentas(prev => [{
+          fecha: formatFechaCorta(fechaOperativa),
+          hora: now.toTimeString().slice(0, 5),
+          producto: producto.nombre,
+          cant: `${galones.toFixed(2)} ${producto.unidad}`,
+          total: soles,
+          metodo: METODOS.find(m => m.id === metodo).label,
+          comp: comprobante === 'factura' ? 'Factura' : 'Boleta',
+        }, ...prev]);
+        setValor('');
+        setRuc('');
+        setRazonSocial('');
+      }
+
+      const totalTurno = ventas.reduce((a, v) => a + v.total, 0);
+
+      return (
+        <div style={{ display: 'grid', gridTemplateColumns: '1.3fr 1fr', gap: 16 }}>
+          <div style={{ background: C.panel, border: `1px solid ${C.border}`, borderRadius: 12, padding: 20 }}>
+            <div style={{ fontFamily: 'Inter', fontSize: 12, color: C.muted, marginBottom: 12, textTransform: 'uppercase', letterSpacing: '0.06em' }}>1. Selecciona el producto</div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
+              {PRODUCTOS.map(p => {
+                const sel = p.id === productoId;
+                const IconComp = { diesel: I.Fuel, urea: I.Droplet, regular: I.Gauge }[p.id] || I.Fuel;
+                return (
+                  <button key={p.id} onClick={() => setProductoId(p.id)} type="button" style={{
+                    display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 8, padding: '14px 14px',
+                    borderRadius: 10, cursor: 'pointer', textAlign: 'left',
+                    border: `1.5px solid ${sel ? p.color : C.border}`, background: sel ? p.soft : C.bg,
+                  }}>
+                    <IconComp size={18} color={p.color} />
+                    <div style={{ fontFamily: 'Inter', fontSize: 12.5, color: C.text, fontWeight: 500 }}>{p.nombre}</div>
+                    <div style={{ fontFamily: 'JetBrains Mono', fontSize: 14, color: p.color, fontWeight: 700 }}>S/ {p.precio.toFixed(2)}</div>
+                  </button>
+                );
+              })}
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', margin: '18px 0 10px' }}>
+              <span style={{ fontFamily: 'Inter', fontSize: 12, color: C.muted, textTransform: 'uppercase', letterSpacing: '0.06em' }}>2. ¿Cómo te lo piden?</span>
+              <div style={{ display: 'flex', gap: 6 }}>
+                <Pill active={modo === 'galones'} onClick={() => { setModo('galones'); setValor(''); }} Icon={I.Gauge}>Por galones</Pill>
+                <Pill active={modo === 'soles'} onClick={() => { setModo('soles'); setValor(''); }} Icon={I.Wallet}>Por soles</Pill>
+              </div>
+            </div>
+            <input
+              type="number" step="0.01"
+              placeholder={modo === 'galones' ? `Cantidad en ${producto.unidad}` : 'Monto en soles'}
+              value={valor} onChange={e => setValor(e.target.value)}
+              style={{ width: '100%', background: C.bg, border: `1px solid ${C.border}`, borderRadius: 10, padding: '12px 14px', color: C.text, fontFamily: 'JetBrains Mono', fontSize: 18, boxSizing: 'border-box' }}
+            />
+            {num > 0 && (
+              <div style={{ fontFamily: 'Inter', fontSize: 12.5, color: C.teal, marginTop: 8 }}>
+                {modo === 'galones' ? `= ${money(soles)} en total` : `= ${galones.toFixed(2)} ${producto.unidad} de ${producto.nombre.toLowerCase()}`}
+              </div>
+            )}
+
+            <div style={{ fontFamily: 'Inter', fontSize: 12, color: C.muted, margin: '18px 0 10px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>3. Forma de pago</div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8 }}>
+              {METODOS.map(m => {
+                const sel = m.id === metodo;
+                const IconComp = { efectivo: I.Banknote, tarjeta: I.CreditCard, yape: I.Smartphone, transferencia: I.ArrowLeftRight }[m.id] || I.Banknote;
+                return (
+                  <button key={m.id} onClick={() => setMetodo(m.id)} type="button" style={{
+                    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, padding: '10px 6px', borderRadius: 10, cursor: 'pointer',
+                    border: `1.5px solid ${sel ? C.amber : C.border}`, background: sel ? C.amberSoft : C.bg,
+                  }}>
+                    <IconComp size={16} color={sel ? C.amber : C.textDim} />
+                    <span style={{ fontFamily: 'Inter', fontSize: 11, color: sel ? C.amber : C.textDim }}>{m.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+
+            <div style={{ fontFamily: 'Inter', fontSize: 12, color: C.muted, margin: '18px 0 10px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>4. Comprobante</div>
+            <div style={{ display: 'flex', gap: 8, marginBottom: comprobante === 'factura' ? 12 : 0 }}>
+              <Pill active={comprobante === 'boleta'} onClick={() => setComprobante('boleta')} Icon={I.Receipt}>Boleta</Pill>
+              <Pill active={comprobante === 'factura'} onClick={() => setComprobante('factura')} Icon={I.FileText}>Factura</Pill>
+            </div>
+            {comprobante === 'factura' && (
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.6fr', gap: 8 }}>
+                <input placeholder="RUC" value={ruc} onChange={e => setRuc(e.target.value)} style={inputStyle} />
+                <input placeholder="Razón social" value={razonSocial} onChange={e => setRazonSocial(e.target.value)} style={inputStyle} />
+              </div>
+            )}
+
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 20, paddingTop: 16, borderTop: `1px solid ${C.border}` }}>
+              <div>
+                <div style={{ fontFamily: 'Inter', fontSize: 12, color: C.muted }}>Total a cobrar</div>
+                <div style={{ fontFamily: 'JetBrains Mono', fontSize: 26, fontWeight: 700, color: C.amber, textShadow: `0 0 14px ${C.amber}55` }}>{money(soles)}</div>
+              </div>
+              <button onClick={registrar} disabled={!puedeRegistrar} type="button" style={{
+                background: puedeRegistrar ? C.amber : C.panelLight, color: puedeRegistrar ? C.bg : C.muted, border: 'none',
+                borderRadius: 10, padding: '14px 26px', fontFamily: 'Inter', fontWeight: 700, fontSize: 14,
+                cursor: puedeRegistrar ? 'pointer' : 'not-allowed', display: 'flex', alignItems: 'center', gap: 8,
+              }}>
+                <I.Check size={16} /> Registrar venta
+              </button>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <div style={{ background: C.panel, border: `1px solid ${C.border}`, borderRadius: 12, padding: 18 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                <I.Clock size={14} color={C.teal} />
+                <span style={{ fontFamily: 'Inter', fontSize: 12.5, color: C.textDim }}>Turno actual · {estacion}</span>
+              </div>
+              <div style={{ fontFamily: 'Oswald', fontSize: 24, fontWeight: 600, color: C.text, marginTop: 6 }}>{money(totalTurno)}</div>
+              <div style={{ fontFamily: 'Inter', fontSize: 11.5, color: C.muted }}>{ventas.length} ventas registradas · fecha operativa {formatFechaCorta(fechaOperativa)}</div>
+            </div>
+
+            <div style={{ background: C.panel, border: `1px solid ${C.border}`, borderRadius: 12, padding: 18, flex: 1 }}>
+              <div style={{ fontFamily: 'Inter', fontSize: 12.5, color: C.textDim, marginBottom: 12 }}>Ventas recientes</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 380, overflowY: 'auto' }}>
+                {ventas.length === 0 && (
+                  <div style={{ fontFamily: 'Inter', fontSize: 12.5, color: C.muted, textAlign: 'center', padding: '18px 0' }}>
+                    Aún no hay ventas en este turno.
+                  </div>
+                )}
+                {ventas.map((v, i) => (
+                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 10px', background: C.bg, borderRadius: 8, border: `1px solid ${C.border}` }}>
+                    <div style={{ fontFamily: 'JetBrains Mono', fontSize: 10.5, color: C.muted, width: 46, flexShrink: 0, lineHeight: 1.3 }}>{v.fecha}<br />{v.hora}</div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontFamily: 'Inter', fontSize: 12.5, color: C.text }}>{v.producto}</div>
+                      <div style={{ fontFamily: 'Inter', fontSize: 11, color: C.muted }}>{v.cant} · {v.metodo} · {v.comp}</div>
+                    </div>
+                    <div style={{ fontFamily: 'JetBrains Mono', fontSize: 12.5, color: C.text, flexShrink: 0 }}>{money(v.total)}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    /* ===================== TRABAJADOR: CIERRE DE TURNO ===================== */
+    function CierreTurno({ estacion, ventas, usuario, fechaOperativa, historialTurnos, onCerrarTurno }) {
+      const [efectivoContado, setEfectivoContado] = useState('');
+      const [cerrado, setCerrado] = useState(false);
+
+      const porMetodo = METODOS.map(m => ({
+        ...m, total: ventas.filter(v => v.metodo === m.label).reduce((a, v) => a + v.total, 0),
+      }));
+      const totalGeneral = ventas.reduce((a, v) => a + v.total, 0);
+      const totalEfectivoEsperado = porMetodo.find(m => m.id === 'efectivo').total;
+      const contado = parseFloat(efectivoContado) || 0;
+      const diferencia = contado - totalEfectivoEsperado;
+
+      const hoy = DIAS[(new Date().getDay() + 6) % 7];
+      const trabajadorHoy = TRABAJADORES_INIT.find(t => t.usuario === usuario);
+      const horarioHoy = trabajadorHoy?.horario.find(d => d.dia === hoy);
+
+      function cerrarTurno() {
+        if (cerrado || efectivoContado === '') return;
+        setCerrado(true);
+        onCerrarTurno({
+          fecha: formatFechaCorta(fechaOperativa),
+          totalGeneral,
+          totalVentas: ventas.length,
+          efectivoContado: contado,
+          diferencia,
+        });
+      }
+
+      return (
+        <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: 16 }}>
+          <div style={{ background: C.panel, border: `1px solid ${C.border}`, borderRadius: 12, padding: 20 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <I.ListChecks size={16} color={C.amber} />
+                <span style={{ fontFamily: 'Inter', fontSize: 14, fontWeight: 600, color: C.text }}>Resumen del turno · {estacion}</span>
+              </div>
+              <span style={{ fontFamily: 'JetBrains Mono', fontSize: 12, color: C.muted }}>{formatFechaCorta(fechaOperativa)}</span>
+            </div>
+
+            {cerrado ? (
+              <div style={{
+                display: 'flex', flexDirection: 'column', gap: 10, alignItems: 'center', textAlign: 'center',
+                padding: '28px 10px', background: C.greenSoft, borderRadius: 10,
+              }}>
+                <I.Check size={26} color={C.green} />
+                <div style={{ fontFamily: 'Inter', fontSize: 14, fontWeight: 600, color: C.green }}>Turno del {formatFechaCorta(fechaOperativa)} cerrado y reportado</div>
+                <div style={{ fontFamily: 'Inter', fontSize: 12, color: C.textDim, lineHeight: 1.6 }}>
+                  La fecha operativa avanzó a <b style={{ color: C.text }}>{formatFechaCorta(addDias(fechaOperativa, 1))}</b>. Las próximas ventas que registres en "Nueva venta" ya se guardarán con esa fecha.
+                </div>
+              </div>
+            ) : (
+              <>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 18 }}>
+                  {porMetodo.map(m => {
+                    const IconComp = { efectivo: I.Banknote, tarjeta: I.CreditCard, yape: I.Smartphone, transferencia: I.ArrowLeftRight }[m.id] || I.Banknote;
+                    return (
+                      <div key={m.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 10px', background: C.bg, borderRadius: 8, border: `1px solid ${C.border}` }}>
+                        <IconComp size={15} color={C.textDim} />
+                        <span style={{ fontFamily: 'Inter', fontSize: 13, color: C.textDim, flex: 1 }}>{m.label}</span>
+                        <span style={{ fontFamily: 'JetBrains Mono', fontSize: 13.5, color: C.text }}>{money(m.total)}</span>
+                      </div>
+                    );
+                  })}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 10px', background: C.amberSoft, borderRadius: 8, marginTop: 4 }}>
+                    <span style={{ fontFamily: 'Inter', fontSize: 13, color: C.amber, fontWeight: 600, flex: 1 }}>Total del turno</span>
+                    <span style={{ fontFamily: 'JetBrains Mono', fontSize: 15, color: C.amber, fontWeight: 700 }}>{money(totalGeneral)}</span>
+                  </div>
+                </div>
+                <Field label="Efectivo contado en caja (S/)">
+                  <input type="number" step="0.01" value={efectivoContado} onChange={e => setEfectivoContado(e.target.value)}
+                    placeholder="0.00" style={{ ...inputStyle, fontFamily: 'JetBrains Mono', fontSize: 16 }} />
+                </Field>
+                {efectivoContado !== '' && (
+                  <div style={{
+                    marginTop: 12, padding: '10px 12px', borderRadius: 8,
+                    background: diferencia === 0 ? C.greenSoft : C.redSoft,
+                    color: diferencia === 0 ? C.green : C.red, fontFamily: 'Inter', fontSize: 12.5, display: 'flex', alignItems: 'center', gap: 8,
+                  }}>
+                    {diferencia === 0 ? <I.Check size={14} /> : <I.AlertTriangle size={14} />}
+                    {diferencia === 0 ? 'La caja cuadra exactamente.' : `Diferencia de ${money(Math.abs(diferencia))} (${diferencia > 0 ? 'sobra' : 'falta'} dinero).`}
+                  </div>
+                )}
+                <button
+                  onClick={cerrarTurno} disabled={efectivoContado === ''} type="button"
+                  style={{
+                    marginTop: 18, width: '100%', background: efectivoContado === '' ? C.panelLight : C.amber, color: efectivoContado === '' ? C.muted : C.bg,
+                    border: 'none', borderRadius: 10, padding: '13px 0', fontFamily: 'Inter', fontWeight: 700, fontSize: 14,
+                    cursor: efectivoContado === '' ? 'not-allowed' : 'pointer',
+                  }}
+                >
+                  Cerrar turno y enviar reporte
+                </button>
+              </>
+            )}
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <div style={{ background: C.panel, border: `1px solid ${C.border}`, borderRadius: 12, padding: 18 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                <I.Clock size={14} color={C.teal} />
+                <span style={{ fontFamily: 'Inter', fontSize: 12.5, color: C.textDim }}>Horario de hoy ({hoy})</span>
+              </div>
+              <div style={{ fontFamily: 'Oswald', fontSize: 20, fontWeight: 600, color: C.text }}>
+                {horarioHoy && !horarioHoy.libre ? `${horarioHoy.ini} – ${horarioHoy.fin}` : 'Día libre'}
+              </div>
+            </div>
+
+            <div style={{ background: C.tealSoft, border: `1px solid ${C.border}`, borderRadius: 12, padding: 18, display: 'flex', gap: 10 }}>
+              <I.AlertTriangle size={16} color={C.teal} style={{ flexShrink: 0, marginTop: 2 }} />
+              <div style={{ fontFamily: 'Inter', fontSize: 12.5, color: C.textDim, lineHeight: 1.6 }}>
+                Política de cierre: el turno se puede cerrar en cualquier momento, sin importar la hora (pensado para turnos nocturnos que cruzan la medianoche, como 10 pm – 6 am). En cuanto cierras, la fecha operativa avanza automáticamente al día siguiente y las ventas nuevas quedan registradas con esa fecha.
+              </div>
+            </div>
+
+            {historialTurnos.length > 0 && (
+              <div style={{ background: C.panel, border: `1px solid ${C.border}`, borderRadius: 12, padding: 18 }}>
+                <div style={{ fontFamily: 'Inter', fontSize: 12.5, color: C.textDim, marginBottom: 10 }}>Turnos cerrados anteriores</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {historialTurnos.slice().reverse().map((h, i) => (
+                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', background: C.bg, borderRadius: 8, border: `1px solid ${C.border}` }}>
+                      <span style={{ fontFamily: 'JetBrains Mono', fontSize: 11.5, color: C.muted, width: 44 }}>{h.fecha}</span>
+                      <span style={{ fontFamily: 'Inter', fontSize: 12, color: C.textDim, flex: 1 }}>{h.totalVentas} ventas</span>
+                      <span style={{ fontFamily: 'JetBrains Mono', fontSize: 12.5, color: C.text }}>{money(h.totalGeneral)}</span>
+                      <span style={{ fontFamily: 'Inter', fontSize: 11, color: h.diferencia === 0 ? C.green : C.red }}>
+                        {h.diferencia === 0 ? 'Cuadrado' : (h.diferencia > 0 ? '+' : '') + money(h.diferencia)}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    /* ===================== APP ===================== */
+    function GrifosKala() {
+      const [sesion, setSesion] = useState(null);
+      const [estacion, setEstacion] = useState(ESTACIONES[0]);
+      const [tabAdmin, setTabAdmin] = useState('resumen');
+      const [tabTrabajador, setTabTrabajador] = useState('venta');
+      const [fechaOperativa, setFechaOperativa] = useState(new Date());
+      const [historialTurnos, setHistorialTurnos] = useState([]);
+      const [ventas, setVentas] = useState([
+        { fecha: formatFechaCorta(new Date()), hora: '08:12', producto: 'Diésel B5', cant: '20.00 gal', total: 462.00, metodo: 'Efectivo', comp: 'Boleta' },
+        { fecha: formatFechaCorta(new Date()), hora: '08:34', producto: 'Gasolina Regular', cant: '10.00 gal', total: 199.00, metodo: 'Yape', comp: 'Boleta' },
+        { fecha: formatFechaCorta(new Date()), hora: '09:05', producto: 'Diésel B5', cant: '40.00 gal', total: 924.00, metodo: 'Tarjeta', comp: 'Factura' },
+      ]);
+
+      function cerrarTurno(reporte) {
+        setHistorialTurnos(prev => [...prev, reporte]);
+        setVentas([]);
+        setFechaOperativa(prev => addDias(prev, 1));
+      }
+
+      if (!sesion) {
+        return <LoginScreen onLogin={(rol, usuario) => setSesion({ rol, usuario })} />;
+      }
+
+      const adminTabs = [
+        { id: 'resumen', label: 'Resumen', Icon: I.LayoutDashboard },
+        { id: 'trabajadores', label: 'Trabajadores y turnos', Icon: I.Users },
+      ];
+      const trabajadorTabs = [
+        { id: 'venta', label: 'Nueva venta', Icon: I.Fuel },
+        { id: 'cierre', label: 'Cierre de turno', Icon: I.ListChecks },
+      ];
+
+      return (
+        <div style={{ background: C.bg, minHeight: '100vh', fontFamily: "'Inter', sans-serif", padding: 20, boxSizing: 'border-box' }}>
+          <div style={{ maxWidth: 1180, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 20 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
+              <Logo />
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: C.panel, border: `1px solid ${C.border}`, borderRadius: 10, padding: '8px 12px' }}>
+                  <I.Building2 size={14} color={C.textDim} />
+                  <select value={estacion} onChange={e => setEstacion(e.target.value)} style={{ background: 'transparent', border: 'none', color: C.text, fontFamily: 'Inter', fontSize: 13, fontWeight: 500, cursor: 'pointer' }}>
+                    {ESTACIONES.map(e => <option key={e} value={e} style={{ background: C.panel }}>{e}</option>)}
+                  </select>
+                  <I.ChevronDown size={13} color={C.muted} />
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: C.panel, border: `1px solid ${C.border}`, borderRadius: 10, padding: '8px 12px' }}>
+                  <I.Clock size={14} color={C.textDim} />
+                  <span style={{ fontFamily: 'Inter', fontSize: 12.5, color: C.textDim }}>{formatFechaLarga(fechaOperativa)}</span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: C.panel, border: `1px solid ${C.border}`, borderRadius: 10, padding: '8px 12px' }}>
+                  <I.ShieldCheck size={14} color={C.amber} />
+                  <span style={{ fontFamily: 'Inter', fontSize: 12.5, color: C.textDim }}>{sesion.usuario} · {sesion.rol === 'admin' ? 'Administrador' : 'Trabajador'}</span>
+                </div>
+                <button onClick={() => setSesion(null)} type="button" style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: `1px solid ${C.border}`, borderRadius: 10, padding: '8px 12px', color: C.textDim, cursor: 'pointer', fontFamily: 'Inter', fontSize: 12.5 }}>
+                  <I.LogOut size={14} /> Salir
+                </button>
+              </div>
+            </div>
+
+            {sesion.rol === 'admin' ? (
+              <>
+                <TabBar tabs={adminTabs} active={tabAdmin} onChange={setTabAdmin} />
+                {tabAdmin === 'resumen' ? <ResumenAdmin estacion={estacion} /> : <TrabajadoresAdmin />}
+              </>
+            ) : (
+              <>
+                <TabBar tabs={trabajadorTabs} active={tabTrabajador} onChange={setTabTrabajador} />
+                {tabTrabajador === 'venta'
+                  ? <VentaTrabajador estacion={estacion} ventas={ventas} setVentas={setVentas} fechaOperativa={fechaOperativa} />
+                  : <CierreTurno estacion={estacion} ventas={ventas} usuario={sesion.usuario} fechaOperativa={fechaOperativa} historialTurnos={historialTurnos} onCerrarTurno={cerrarTurno} />}
+              </>
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<GrifosKala />);
+  </script>
+</body>
+</html>
